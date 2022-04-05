@@ -6,7 +6,7 @@
   <link href="/knightswd.github.io/atom.xml" rel="self"/>
   
   <link href="https://knightswd.github.io/"/>
-  <updated>2020-08-03T11:49:18.992Z</updated>
+  <updated>2022-04-05T07:14:01.473Z</updated>
   <id>https://knightswd.github.io/</id>
   
   <author>
@@ -15,6 +15,35 @@
   </author>
   
   <generator uri="https://hexo.io/">Hexo</generator>
+  
+  <entry>
+    <title>WMI渗透</title>
+    <link href="https://knightswd.github.io/2022/04/05/WMI%E6%B8%97%E9%80%8F/"/>
+    <id>https://knightswd.github.io/2022/04/05/WMI%E6%B8%97%E9%80%8F/</id>
+    <published>2022-04-05T07:02:19.000Z</published>
+    <updated>2022-04-05T07:14:01.473Z</updated>
+    
+    <content type="html"><![CDATA[<h1 id="WMI渗透"><a href="#WMI渗透" class="headerlink" title="WMI渗透"></a>WMI渗透</h1><p>[toc]</p><p>WMI（Windows Management Instrumentation），它是由CIM (Common Information Model) 和 WBEM (Web-Based Enterprise Management)实现</p><h2 id="WMI在windows中的架构"><a href="#WMI在windows中的架构" class="headerlink" title="WMI在windows中的架构"></a>WMI在windows中的架构</h2><p><img src= data:image/gif;base64,R0lGODdhAQABAPAAAMPDwwAAACwAAAAAAQABAAACAkQBADs= data-src="/2022/04/05/WMI%E6%B8%97%E9%80%8F/cover.png" alt="image-20211018214428041"></p><p>Client：常用的客户端应用程序，类似Wmic、powershell、wbemtest</p><p>Query languages：wmi的sql查询组件，主要是通过WQL/CQL实现，而WBEM主要包括DCOM和WS-Man</p><p>Repositories：由MOF(managed object format)定义的存储数据库，文件存储在<code>%WINDIR%\System32\Wbem\Repository</code>目录。</p><p>MOF Files：主要用来定义WMI的命名空间、类、提供的程序等，文件在<code>%WINDIR%\System32\Wbem</code>中，扩展名为.mof。</p><p>Providers：wmi管理和具体实现的桥梁，通过驱动连接内核。</p><p>Managed Objects：wmi管理的对象进程、服务或者文件。</p><p>Namespaces：命名空间，主要包含三组（system、core、extension）和三类（abstract、static、dynamic）。默认的命名空间有<code>root\cimv2</code> <code>root\default</code>,<code>root\security</code>,<code>root\subscription</code></p><h3 id="namespace"><a href="#namespace" class="headerlink" title="namespace:"></a>namespace:</h3><p>powershell获取所有的namespace的命令</p><p><code>Get-WmiObject -Namespace root -Class __Namespace | select name</code></p><h3 id="classes"><a href="#classes" class="headerlink" title="classes:"></a>classes:</h3><p>classes主要包含三个主要目录分别是：</p><p>core classes：提供基础功能，通常由两个下划线开始（__systemSecurity）</p><p>common classes:内核类的扩展，前缀通常是CIM_(CIM_TemperatureSensor)</p><p>Extened Classes:额外加入的公共类（win32_Process）</p><p>这些类又被进一步分为四个类型，抽象类、静态类、动态类、相关类。</p><h2 id="工作组信息收集"><a href="#工作组信息收集" class="headerlink" title="工作组信息收集"></a>工作组信息收集</h2><h3 id="获取特定类名的类"><a href="#获取特定类名的类" class="headerlink" title="获取特定类名的类"></a>获取特定类名的类</h3><p><code>Get-WmiObject -Class *user* -List</code></p><h3 id="获取特定类的数据"><a href="#获取特定类的数据" class="headerlink" title="获取特定类的数据"></a>获取特定类的数据</h3><p>查询用户类：<code>Get-WmiObject -Class Win32_UserAccount</code>，如果要获取更加详细的输出，可以使用<code>Get-WmiObject -Class Win32_UserAccount | fl *</code></p><p>查询进程类：<code>Get-WmiObject -Class Win32_Process -Filter &#39;name=&quot;lsass.exe&quot;&#39;</code></p><h3 id="通过进程类来关闭进程"><a href="#通过进程类来关闭进程" class="headerlink" title="通过进程类来关闭进程"></a>通过进程类来关闭进程</h3><p><code>Get-CimInstance -ClassName Win32_Process -Filter &#39;name=&quot;calculator.exe&quot;&#39; | Remove-CimInstance</code></p><h3 id="获取具体类中可用的方法"><a href="#获取具体类中可用的方法" class="headerlink" title="获取具体类中可用的方法"></a>获取具体类中可用的方法</h3><p><code>Get-WmiObject -Class Win32_Process -List | select -ExpandProperty Methods</code></p><h3 id="使用类中的具体方法"><a href="#使用类中的具体方法" class="headerlink" title="使用类中的具体方法"></a>使用类中的具体方法</h3><p><code>Invoke-WmiMethod -Class Win32_Process -Name Create -ArgumentList calc.exe</code></p><h3 id="wmi查询注册表key值"><a href="#wmi查询注册表key值" class="headerlink" title="wmi查询注册表key值"></a>wmi查询注册表key值</h3><p><code>Invoke-WmiMethod -Namespace root\default -Class stdregprov -Name EnumKey @(2147483650, &quot;software\microsoft\windows nt\currentversion&quot;) | select -ExpandProperty snames</code></p><h3 id="获取具体值"><a href="#获取具体值" class="headerlink" title="获取具体值"></a>获取具体值</h3><p><code>Invoke-WmiMethod -Namespace root\default -Class stdregprov -Name enumvalues @(2147483650, &quot;software\microsoft\windows nt\currentversion\drivers32&quot;)</code></p><h3 id="获取注册表具体子项"><a href="#获取注册表具体子项" class="headerlink" title="获取注册表具体子项"></a>获取注册表具体子项</h3><p><code>Invoke-WmiMethod -Namespace root\default -Class stdregprov -Name GetStringValue @(2147483650, &quot;software\microsoft\windows nt\currentversion\drivers32&quot;, &quot;aux&quot;)</code></p><h3 id="创建注册表值"><a href="#创建注册表值" class="headerlink" title="创建注册表值"></a>创建注册表值</h3><p><code>Invoke-WmiMethod -Namespace root\default -Class stdregprov -Name SetStringValue @(2147483649, &quot;software\microsoft\windows\currentversion\run&quot;, &quot;C:\Windows\System32\calc.exe&quot;, &quot;Calculator&quot;)</code></p><h3 id="删除注册表值"><a href="#删除注册表值" class="headerlink" title="删除注册表值"></a>删除注册表值</h3><p><code>Invoke-WmiMethod -Namespace root\default -Class stdregprov -Name DeleteValue @(2147483649, &quot;software\microsoft\windows\currentversion\run&quot;, &quot;Calculator&quot;)</code></p><h3 id="创建新注册表key值"><a href="#创建新注册表key值" class="headerlink" title="创建新注册表key值"></a>创建新注册表key值</h3><p><code>Invoke-WmiMethod -Namespace root\default -Class stdregprov -Name CreateKey @(2147483650, &quot;software\openssh\CustomAgent&quot;)</code></p><h3 id="删除注册表key值"><a href="#删除注册表key值" class="headerlink" title="删除注册表key值"></a>删除注册表key值</h3><p><code>Invoke-WmiMethod -Namespace root\default -Class stdregprov -Name DeleteKey @(2147483650, &quot;software\openssh\CustomAgent&quot;)</code></p><h3 id="收集系统信息"><a href="#收集系统信息" class="headerlink" title="收集系统信息"></a>收集系统信息</h3><p><code>Get-WmiObject -Class win32_operatingsystem | fl *</code></p><h3 id="查找具体文件"><a href="#查找具体文件" class="headerlink" title="查找具体文件"></a>查找具体文件</h3><p><code>Get-WmiObject -Class win32_directory -Filter &#39;name LIKE &quot;%snapshots%&quot;&#39;</code></p><h3 id="查询杀软信息"><a href="#查询杀软信息" class="headerlink" title="查询杀软信息"></a>查询杀软信息</h3><p><code>Get-WmiObject -Namespace root\securitycenter2 -Class antivirusproduct</code></p><h3 id="查询服务信息"><a href="#查询服务信息" class="headerlink" title="查询服务信息"></a>查询服务信息</h3><p><code>Get-WmiObject -Class win32_service -Filter &#39;startname=&quot;localsystem&quot;&#39; | select *</code></p><h3 id="获取登录用户的登录id、开始时间、登录方式"><a href="#获取登录用户的登录id、开始时间、登录方式" class="headerlink" title="获取登录用户的登录id、开始时间、登录方式"></a>获取登录用户的登录id、开始时间、登录方式</h3><p><code>Get-WmiObject -Class win32_logonsession | select authenticationpackage,logonid,starttime,scope</code></p><h3 id="获取windows系统日志"><a href="#获取windows系统日志" class="headerlink" title="获取windows系统日志"></a>获取windows系统日志</h3><p><code>Get-WmiObject -Class win32_ntlogevent</code></p><h3 id="获取windows中的共享资源信息"><a href="#获取windows中的共享资源信息" class="headerlink" title="获取windows中的共享资源信息"></a>获取windows中的共享资源信息</h3><p><code>Get-WmiObject -Class win32_share | select type,name,allowmaximum,description,scope</code></p><h3 id="获取用户组"><a href="#获取用户组" class="headerlink" title="获取用户组"></a>获取用户组</h3><p><code>Get-WmiObject -Class win32_group</code></p><h3 id="获取系统其他的信息"><a href="#获取系统其他的信息" class="headerlink" title="获取系统其他的信息"></a>获取系统其他的信息</h3><p>通过创建shadow copy可以创建一个windows备份或者当前镜像，然后使用<a href="https://github.com/Arvanaghi/SessionGopher/blob/master/SessionGopher.ps1" target="_blank" rel="noopener"><code>Invoke-SessionGopher.ps1</code></a>工具来获取rdp、winSCP的信息。</p><p>先创建文件<code>(Get-WmiObject -Class win32_shadowcopy -List).create(&quot;C:\&quot;, &quot;ClientAccessible&quot;)</code>,在进行符号链接</p><p><code>$link = (Get-WmiObject -Class win32_shadowcopy).deviceobject + &quot;/&quot;cmd /c mklink /d C:\shadowcopy &quot;$link&quot;</code></p><h2 id="域信息收集"><a href="#域信息收集" class="headerlink" title="域信息收集"></a>域信息收集</h2><h3 id="获取域名"><a href="#获取域名" class="headerlink" title="获取域名"></a>获取域名</h3><p><code>Get-WmiObject -Namespace root\directory\ldap -Class ds_domain | select ds_dc,    ds_distinguishedname, pscomputername</code></p><h3 id="获取域策略"><a href="#获取域策略" class="headerlink" title="获取域策略"></a>获取域策略</h3><p>获取密码过期时间、最小密码长度、密码历史长度等</p><p><code>Get-WmiObject -Namespace root\directory\ldap -Class ds_domain | select ds_lockoutduration,    ds_lockoutobservationwindow, ds_lockoutthreshold, ds_maxpwdage,    ds_minpwdage, ds_minpwdlength, ds_pwdhistorylength, ds_pwdproperties</code></p><h3 id="查询域控制器"><a href="#查询域控制器" class="headerlink" title="查询域控制器"></a>查询域控制器</h3><p><code>Get-WmiObject -Namespace root\directory\ldap -Class ds_computer | where {    $_.ds_useraccountcontrol -match 532480} | select ds_cn, ds_dnshostname, ds_operatingsystem, ds_lastlogon, ds_pwdlastset</code></p><h3 id="搜索域内账户"><a href="#搜索域内账户" class="headerlink" title="搜索域内账户"></a>搜索域内账户</h3><p><code>Get-WmiObject -Class win32_useraccount | select name, domain, accounttype</code></p><p>获取单个域的账户：<code>Get-WmiObject -Class win32_useraccount -Filter &#39;domain=&quot;infected&quot;&#39; | select caption</code></p><h3 id="获取当前登录账号及域"><a href="#获取当前登录账号及域" class="headerlink" title="获取当前登录账号及域"></a>获取当前登录账号及域</h3><p><code>Get-WmiObject -Class win32_loggedonuser | where {    $_ -match &#39;infected&#39;} | foreach {[wmi]$_.antecedent}</code></p><h3 id="获取组内所有用户"><a href="#获取组内所有用户" class="headerlink" title="获取组内所有用户"></a>获取组内所有用户</h3><p><code>Get-WmiObject -Class win32_groupuser | where {    $_.groupcomponent -match &#39;domain admins&#39;} | foreach {[wmi]$_.partcomponent}</code></p><h3 id="获取所有特定用户的组-可以获取所有有管理员权限的组"><a href="#获取所有特定用户的组-可以获取所有有管理员权限的组" class="headerlink" title="获取所有特定用户的组(可以获取所有有管理员权限的组)"></a>获取所有特定用户的组(可以获取所有有管理员权限的组)</h3><p><code>Get-WmiObject -Class win32_groupuser | where {    $_.partcomponent -match &#39;Administrator&#39;} | foreach {[wmi]$_.groupcomponent}</code></p>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;h1 id=&quot;WMI渗透&quot;&gt;&lt;a href=&quot;#WMI渗透&quot; class=&quot;headerlink&quot; title=&quot;WMI渗透&quot;&gt;&lt;/a&gt;WMI渗透&lt;/h1&gt;&lt;p&gt;[toc]&lt;/p&gt;
+&lt;p&gt;WMI（Windows Management Instrumentation），它是由CI
+      
+    
+    </summary>
+    
+    
+      <category term="内网渗透" scheme="https://knightswd.github.io/categories/%E5%86%85%E7%BD%91%E6%B8%97%E9%80%8F/"/>
+    
+    
+      <category term="内网渗透" scheme="https://knightswd.github.io/tags/%E5%86%85%E7%BD%91%E6%B8%97%E9%80%8F/"/>
+    
+      <category term="信息收集" scheme="https://knightswd.github.io/tags/%E4%BF%A1%E6%81%AF%E6%94%B6%E9%9B%86/"/>
+    
+  </entry>
   
   <entry>
     <title>chrome浏览器cookie及密码解密</title>
@@ -523,33 +552,6 @@
       <category term="ctf" scheme="https://knightswd.github.io/tags/ctf/"/>
     
       <category term="php" scheme="https://knightswd.github.io/tags/php/"/>
-    
-  </entry>
-  
-  <entry>
-    <title>文件泄露</title>
-    <link href="https://knightswd.github.io/2019/03/09/%E6%96%87%E4%BB%B6%E6%B3%84%E9%9C%B2/"/>
-    <id>https://knightswd.github.io/2019/03/09/%E6%96%87%E4%BB%B6%E6%B3%84%E9%9C%B2/</id>
-    <published>2019-03-09T07:00:15.000Z</published>
-    <updated>2019-05-03T06:26:53.409Z</updated>
-    
-    <content type="html"><![CDATA[<p>最近做一个utctf题，发现自己对各种应用的隐藏文件产生的文件目录泄露不太敏感，所以打算写个博客总结一波</p><h1 id="linux的-swp-文件"><a href="#linux的-swp-文件" class="headerlink" title="linux的.swp 文件"></a>linux的.swp 文件</h1><p>.swp文件是使用vim编辑器产生的隐藏文件，这个文件类似于一个虚拟内存，当内存不足时将硬盘空间虚拟成内存使用。当文件正常退出时，文件自动删除，如果没有对文件修改，只是读取文件，是不会产生.swp文件的。</p><h1 id="mac的-DS-store文件"><a href="#mac的-DS-store文件" class="headerlink" title="mac的.DS_store文件"></a>mac的.DS_store文件</h1><p>.DS_Store是Mac OS保存文件夹的自定义属性的隐藏文件。</p><h1 id="windows的desktop-ini"><a href="#windows的desktop-ini" class="headerlink" title="windows的desktop.ini"></a>windows的desktop.ini</h1><p>desktop.ini作用是存储用户对文件夹的个性设置，和mac 的DS_store类似。</p><h1 id="IDEA产生的-idea文件"><a href="#IDEA产生的-idea文件" class="headerlink" title="IDEA产生的.idea文件"></a>IDEA产生的.idea文件</h1><p>当使用pycharm作为IDE时，会自动生成.idea/文件夹来存放项目的配置信息。其中包括版本控制信息、历史记录等等。</p><p>当ctf题中出现能任意读取文件，但是不知道文件在哪里，有哪些文件时，需要思考是不是有文件目录泄露的问题。</p><h1 id="linux中的-bash-history文件"><a href="#linux中的-bash-history文件" class="headerlink" title="linux中的.bash_history文件"></a>linux中的.bash_history文件</h1><p>.bash_history这个文件是保存了用户执行过的shell命令，默认是1000条shell命令</p><h1 id="git文件泄露"><a href="#git文件泄露" class="headerlink" title=".git文件泄露"></a>.git文件泄露</h1><p>.git文件泄露可以通过<code>githack</code>将文件的还原，.git文件中主要有用的是objects目录下的文件，objects下的文件目录名字是hash的前两位，而文件夹里面的是hash的后面的数字。git可以通过命令将其复原</p><p>githack命令：</p><blockquote><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">python GitHack.py http:&#x2F;&#x2F;www.example.com&#x2F;.git&#x2F;</span><br></pre></td></tr></table></figure></blockquote><p>git复原命令：</p><blockquote><p>git cat-file -p {hash}</p></blockquote><h1 id="使用nano编辑器产生的-save文件"><a href="#使用nano编辑器产生的-save文件" class="headerlink" title="使用nano编辑器产生的.save文件"></a>使用nano编辑器产生的.save文件</h1><p>INS‘HACK里面的一个题，文件泄露为index.php.save。</p>]]></content>
-    
-    <summary type="html">
-    
-      
-      
-        &lt;p&gt;最近做一个utctf题，发现自己对各种应用的隐藏文件产生的文件目录泄露不太敏感，所以打算写个博客总结一波&lt;/p&gt;
-&lt;h1 id=&quot;linux的-swp-文件&quot;&gt;&lt;a href=&quot;#linux的-swp-文件&quot; class=&quot;headerlink&quot; title=&quot;linux的
-      
-    
-    </summary>
-    
-    
-    
-      <category term="ctf" scheme="https://knightswd.github.io/tags/ctf/"/>
-    
-      <category term="隐藏文件" scheme="https://knightswd.github.io/tags/%E9%9A%90%E8%97%8F%E6%96%87%E4%BB%B6/"/>
     
   </entry>
   
